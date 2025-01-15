@@ -1,4 +1,7 @@
-use crate::memory::{self, Memory};
+use crate::{
+    memory::{self, Memory},
+    screen::Screen,
+};
 
 pub struct Cpu {
     pub registers: [u8; 16],
@@ -25,7 +28,8 @@ impl Cpu {
         most_significant << 8 | least_significant
     }
 
-    pub fn run(&mut self, memory: &mut Memory, screen: &mut [[bool; 32]; 64]) {
+    #[rustfmt::skip]
+    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen) {
         let opcode = self.read_opcode(memory);
         self.program_counter += 2;
 
@@ -38,11 +42,8 @@ impl Cpu {
         let nn = (opcode & 0x00FF) as u8;
         let nnn = opcode & 0x0FFF;
 
-        // print!(" {:04x}", opcode);
-
-        #[rustfmt::skip]
         match (c, x, y, d) {
-            (  0,   0,   0,   0) => { return; }
+            (  0,   0,   0,   0) => {}
             (  0,   0, 0xE,   0) => self.clear_screen(screen),
             (  0,   0, 0xE, 0xE) => self.ret(memory),
             (0x1,   _,   _,   _) => self.jump(nnn),
@@ -53,13 +54,11 @@ impl Cpu {
             (0xA,   _,   _,   _) => self.set_i(nnn),
             (0xD, _, _, _) => self.draw_xyn(memory, screen, x, y, n),
             _ => panic!("Unknown opcode: {:x}", opcode),
-        };
+        }
     }
 
-    fn clear_screen(&mut self, screen: &mut [[bool; 32]; 64]) {
-        screen
-            .iter_mut()
-            .for_each(|r| r.iter_mut().for_each(|p| *p = false));
+    fn clear_screen(&mut self, screen: &mut Screen) {
+        screen.clear();
     }
 
     fn ret(&mut self, memory: &mut Memory) {
@@ -107,14 +106,14 @@ impl Cpu {
         self.i_register = nnn;
     }
 
-    fn draw_xyn(&mut self, memory: &Memory, screen: &mut [[bool; 32]; 64], x: u8, y: u8, n: u8) {
+    fn draw_xyn(&mut self, memory: &Memory, screen: &mut Screen, x: u8, y: u8, n: u8) {
         self.registers[0xF] = 0;
-        let x_val = self.registers[x as usize] as usize%64;
-        let y_val = self.registers[y as usize] as usize%32;
+        let x_val = self.registers[x as usize] as usize % 64;
+        let y_val = self.registers[y as usize] as usize % 32;
 
         for row in 0..n as usize {
             let sprite = memory[row + self.i_register as usize];
-                
+
             for col in 0..8 {
                 let screen_x = x_val + col;
                 let screen_y = y_val + row;
@@ -152,7 +151,7 @@ macro_rules! cpu_test {
         };
 
         let mut memory = Memory::new();
-        let mut screen = [[false; 32]; 64];
+        let mut screen = Screen::new();
 
         let mut p = 0;
         $(

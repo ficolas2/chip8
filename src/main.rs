@@ -2,14 +2,16 @@ use std::env;
 
 use cpu::Cpu;
 use memory::Memory;
+use screen::Screen;
 
 mod cpu;
 mod memory;
+mod screen;
 
 struct Chip8 {
     cpu: Cpu,
     memory: Memory,
-    screen: [[bool; 32]; 64],
+    screen: Screen,
 }
 
 impl Chip8 {
@@ -17,7 +19,7 @@ impl Chip8 {
         Chip8 {
             cpu: Cpu::new(),
             memory: Memory::new(),
-            screen: [[false; 32]; 64],
+            screen: Screen::new(),
         }
     }
 
@@ -41,14 +43,15 @@ fn main() {
     }
     println!();
 
+    let mut last_draw = std::time::Instant::now();
     loop {
         chip8.run();
-        for y in 0..32 {
-            for x in 0..64 {
-                print!("{}", if chip8.screen[x][y] { "██" } else { "  " });
-            }
-            println!();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        if last_draw.elapsed().as_millis() < 1000 / 60 {
+            continue;
         }
+        last_draw = std::time::Instant::now();
+        chip8.screen.draw();
     }
 
 }
