@@ -40,34 +40,31 @@ impl Cpu {
             #[rustfmt::skip]
             match (c, x, y, d) {
                 (  0,   0,   0,   0) => { return; }
-                (0x6,   _,   _,   _) => self.set_x(memory, x, nn),
-                (0x7,   _,   _,   _) => self.add_x(memory, x, nn),
-                (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+                (  0,   0, 0xE,   0) => self.clear_screen(screen),
+                (  0,   0, 0xE, 0xE) => self.ret(memory),
                 (0x1,   _,   _,   _) => self.jump(nnn),
                 (0x2,   _,   _,   _) => self.call(nnn, memory),
-                (  0,   0, 0xE, 0xE) => self.ret(memory),
-                (0x0, 0x0, 0xE, 0x0) => self.clear_screen(screen),
+                (0x6,   _,   _,   _) => self.set_x(x, nn),
+                (0x7,   _,   _,   _) => self.add_x(x, nn),
+                (0x8,   _,   _, 0x4) => self.add_xy(x, y),
                 _ => panic!("Unknown opcode: {:x}", opcode),
             };
         }
     }
 
-    fn set_x(&mut self, memory: &Memory, x: u8, nn: u8) {
-        self.registers[x as usize] = nn;
+    fn clear_screen(&mut self, screen: &mut [[bool; 32]; 64]) {
+        screen
+            .iter_mut()
+            .for_each(|r| r.iter_mut().for_each(|p| *p = false));
     }
 
-    fn add_x(&mut self, memory: &Memory, x: u8, nn: u8) {
-        self.registers[x as usize] += nn;
-    }
+    fn ret(&mut self, memory: &mut Memory) {
+        if self.stack_pointer == 0 {
+            panic!("Stack underflow");
+        }
 
-    fn add_xy(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
-
-        let (result, overflow) = x_val.overflowing_add(y_val);
-
-        self.registers[x as usize] = result;
-        self.registers[1] = overflow as u8;
+        self.stack_pointer -= 1;
+        self.program_counter = memory.get_stack_addr(self.stack_pointer) as usize;
     }
 
     fn jump(&mut self, addr: u16) {
@@ -84,19 +81,22 @@ impl Cpu {
         self.program_counter = addr as usize;
     }
 
-    fn ret(&mut self, memory: &mut Memory) {
-        if self.stack_pointer == 0 {
-            panic!("Stack underflow");
-        }
-
-        self.stack_pointer -= 1;
-        self.program_counter = memory.get_stack_addr(self.stack_pointer) as usize;
+    fn set_x(&mut self, x: u8, nn: u8) {
+        self.registers[x as usize] = nn;
     }
 
-    fn clear_screen(&mut self, screen: &mut [[bool; 32]; 64]) {
-        screen
-            .iter_mut()
-            .for_each(|r| r.iter_mut().for_each(|p| *p = false));
+    fn add_x(&mut self, x: u8, nn: u8) {
+        self.registers[x as usize] += nn;
+    }
+
+    fn add_xy(&mut self, x: u8, y: u8) {
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+
+        let (result, overflow) = x_val.overflowing_add(y_val);
+
+        self.registers[x as usize] = result;
+        self.registers[1] = overflow as u8;
     }
 }
 
