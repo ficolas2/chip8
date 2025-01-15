@@ -4,6 +4,7 @@ pub struct Cpu {
     pub registers: [u8; 16],
     pub program_counter: usize,
     pub stack_pointer: usize,
+    pub i_register: u16,
 }
 
 impl Cpu {
@@ -12,6 +13,7 @@ impl Cpu {
             registers: [0; 16],
             program_counter: 0,
             stack_pointer: 0,
+            i_register: 0,
         }
     }
 
@@ -47,6 +49,7 @@ impl Cpu {
                 (0x6,   _,   _,   _) => self.set_x(x, nn),
                 (0x7,   _,   _,   _) => self.add_x(x, nn),
                 (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+                (0xD, _, _, _) => self.draw_xyn(memory, screen, x, y, n),
                 _ => panic!("Unknown opcode: {:x}", opcode),
             };
         }
@@ -97,6 +100,36 @@ impl Cpu {
 
         self.registers[x as usize] = result;
         self.registers[1] = overflow as u8;
+    }
+
+    fn draw_xyn(&mut self, memory: &Memory, screen: &mut [[bool; 32]; 64], x: u8, y: u8, n: u8) {
+        self.registers[0xF] = 0;
+        let x_val = self.registers[x as usize] as usize%64;
+        let y_val = self.registers[y as usize] as usize%32;
+
+        for row in 0..n as usize {
+            let sprite = memory[row + self.i_register as usize];
+                
+            for col in 0..8 {
+                let screen_x = x_val + col;
+                let screen_y = y_val + row;
+
+                if screen_x >= 64 {
+                    break;
+                }
+                if screen_y >= 32 {
+                    return;
+                }
+
+                let bit = ((sprite >> (7 - col)) & 1) != 0;
+                let screen_state = screen[screen_x][screen_y];
+
+                if bit && screen_state {
+                    self.registers[0xF] = 1;
+                }
+                screen[screen_x][screen_y] = bit ^ screen_state;
+            }
+        }
     }
 }
 
