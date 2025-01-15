@@ -39,6 +39,7 @@ impl Cpu {
             match (c, x, y, d) {
                 (  0,   0,   0,   0) => { return; }
                 (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+                (0x1,   _,   _,   _) => self.jump(nnn),
                 (0x2,   _,   _,   _) => self.call(nnn, memory),
                 (  0,   0, 0xE, 0xE) => self.ret(memory),
                 (0x0, 0x0, 0xE, 0x0) => self.clear_screen(screen),
@@ -55,6 +56,10 @@ impl Cpu {
 
         self.registers[x as usize] = result;
         self.registers[1] = overflow as u8;
+    }
+
+    fn jump(&mut self, addr: u16) {
+        self.program_counter = addr as usize;
     }
 
     fn call(&mut self, addr: u16, memory: &mut Memory) {
