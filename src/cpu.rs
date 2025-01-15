@@ -49,6 +49,7 @@ impl Cpu {
                 (0x6,   _,   _,   _) => self.set_x(x, nn),
                 (0x7,   _,   _,   _) => self.add_x(x, nn),
                 (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+                (0xA,   _,   _,   _) => self.set_i(nnn),
                 (0xD, _, _, _) => self.draw_xyn(memory, screen, x, y, n),
                 _ => panic!("Unknown opcode: {:x}", opcode),
             };
@@ -100,6 +101,10 @@ impl Cpu {
 
         self.registers[x as usize] = result;
         self.registers[1] = overflow as u8;
+    }
+
+    fn set_i(&mut self, nnn: u16) {
+        self.i_register = nnn;
     }
 
     fn draw_xyn(&mut self, memory: &Memory, screen: &mut [[bool; 32]; 64], x: u8, y: u8, n: u8) {
