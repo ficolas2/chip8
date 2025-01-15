@@ -23,7 +23,7 @@ impl Cpu {
         most_significant << 8 | least_significant
     }
 
-    pub fn run(&mut self, memory: &mut Memory) {
+    pub fn run(&mut self, memory: &mut Memory, screen: &mut [[bool; 32]; 64]) {
         loop {
             let opcode = self.read_opcode(memory);
             self.program_counter += 2;
@@ -41,6 +41,7 @@ impl Cpu {
                 (0x8,   _,   _, 0x4) => self.add_xy(x, y),
                 (0x2,   _,   _,   _) => self.call(nnn, memory),
                 (  0,   0, 0xE, 0xE) => self.ret(memory),
+                (0x0, 0x0, 0xE, 0x0) => self.clear_screen(screen),
                 _ => panic!("Unknown opcode: {:x}", opcode),
             };
         }
@@ -74,6 +75,10 @@ impl Cpu {
         self.stack_pointer -= 1;
         self.program_counter = memory.get_stack_addr(self.stack_pointer) as usize;
     }
+
+    fn clear_screen(&mut self, screen: &mut [[bool; 32]; 64]) {
+        screen.iter_mut().for_each(|r| r.iter_mut().for_each(|p| *p = false));
+    }
 }
 
 #[cfg(test)]
@@ -90,6 +95,7 @@ macro_rules! cpu_test {
         };
 
         let mut memory = Memory::new();
+        let mut screen = [[false; 32]; 64];
 
         let mut p = 0;
         $(
@@ -103,7 +109,7 @@ macro_rules! cpu_test {
             memory[p + 1] = ($op & 0x00FF) as u8;
             p += 2;
         )+
-        cpu.run(&mut memory);
+        cpu.run(&mut memory, &mut screen);
 
         p = 0;
         $(
