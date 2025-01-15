@@ -11,7 +11,7 @@ impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
             registers: [0; 16],
-            program_counter: 0,
+            program_counter: 0x200,
             stack_pointer: 0,
             i_register: 0,
         }
@@ -26,34 +26,34 @@ impl Cpu {
     }
 
     pub fn run(&mut self, memory: &mut Memory, screen: &mut [[bool; 32]; 64]) {
-        loop {
-            let opcode = self.read_opcode(memory);
-            self.program_counter += 2;
+        let opcode = self.read_opcode(memory);
+        self.program_counter += 2;
 
-            let c = ((opcode & 0xF000) >> 12) as u8;
-            let x = ((opcode & 0x0F00) >> 8) as u8;
-            let y = ((opcode & 0x00F0) >> 4) as u8;
-            let d = (opcode & 0x000F) as u8;
+        let c = ((opcode & 0xF000) >> 12) as u8;
+        let x = ((opcode & 0x0F00) >> 8) as u8;
+        let y = ((opcode & 0x00F0) >> 4) as u8;
+        let d = (opcode & 0x000F) as u8;
 
-            let n = (opcode & 0x000F) as u8;
-            let nn = (opcode & 0x00FF) as u8;
-            let nnn = opcode & 0x0FFF;
+        let n = (opcode & 0x000F) as u8;
+        let nn = (opcode & 0x00FF) as u8;
+        let nnn = opcode & 0x0FFF;
 
-            #[rustfmt::skip]
-            match (c, x, y, d) {
-                (  0,   0,   0,   0) => { return; }
-                (  0,   0, 0xE,   0) => self.clear_screen(screen),
-                (  0,   0, 0xE, 0xE) => self.ret(memory),
-                (0x1,   _,   _,   _) => self.jump(nnn),
-                (0x2,   _,   _,   _) => self.call(nnn, memory),
-                (0x6,   _,   _,   _) => self.set_x(x, nn),
-                (0x7,   _,   _,   _) => self.add_x(x, nn),
-                (0x8,   _,   _, 0x4) => self.add_xy(x, y),
-                (0xA,   _,   _,   _) => self.set_i(nnn),
-                (0xD, _, _, _) => self.draw_xyn(memory, screen, x, y, n),
-                _ => panic!("Unknown opcode: {:x}", opcode),
-            };
-        }
+        // print!(" {:04x}", opcode);
+
+        #[rustfmt::skip]
+        match (c, x, y, d) {
+            (  0,   0,   0,   0) => { return; }
+            (  0,   0, 0xE,   0) => self.clear_screen(screen),
+            (  0,   0, 0xE, 0xE) => self.ret(memory),
+            (0x1,   _,   _,   _) => self.jump(nnn),
+            (0x2,   _,   _,   _) => self.call(nnn, memory),
+            (0x6,   _,   _,   _) => self.set_x(x, nn),
+            (0x7,   _,   _,   _) => self.add_x(x, nn),
+            (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+            (0xA,   _,   _,   _) => self.set_i(nnn),
+            (0xD, _, _, _) => self.draw_xyn(memory, screen, x, y, n),
+            _ => panic!("Unknown opcode: {:x}", opcode),
+        };
     }
 
     fn clear_screen(&mut self, screen: &mut [[bool; 32]; 64]) {
@@ -147,7 +147,7 @@ macro_rules! cpu_test {
     {
         let mut cpu = Cpu {
             registers: [0; 16],
-            program_counter: 0x100,
+            program_counter: 0x200,
             ..Cpu::new()
         };
 

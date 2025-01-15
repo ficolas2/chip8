@@ -1,3 +1,5 @@
+use std::env;
+
 use cpu::Cpu;
 use memory::Memory;
 
@@ -25,6 +27,28 @@ impl Chip8 {
 }
 
 fn main() {
+    // Get first argument as ROM file
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        panic!("Usage: chip8 <rom file>");
+    }
+
     let mut chip8 = Chip8::new();
-    chip8.run();
+    let rom = std::fs::read(&args[1]).expect("Failed to read ROM file");
+
+    for (i, byte) in rom.iter().enumerate() {
+        chip8.memory[i + 0x200] = *byte;
+    }
+    println!();
+
+    loop {
+        chip8.run();
+        for y in 0..32 {
+            for x in 0..64 {
+                print!("{}", if chip8.screen[x][y] { "██" } else { "  " });
+            }
+            println!();
+        }
+    }
+
 }
