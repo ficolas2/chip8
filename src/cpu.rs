@@ -60,18 +60,18 @@ impl Cpu {
             (0x5,   _,   _,   0) => self.skip_if_eq(x_val, y_val),
             (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
 
-            (0x6,   _,   _,   _) => self.set_x(x, nn),
-            (0x7,   _,   _,   _) => self.add_x(x, nn),
+            (0x6,   _,   _,   _) => self.registers[x as usize] = nn, // vX := nn
+            (0x7,   _,   _,   _) => self.registers[x as usize] += nn, // add vX nn
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
             (0x8,   _,   _, 0x7) => self.sub_xy(y, x),
 
-            (0x8,   _,   _, 0x1) => self.or(x, y),
-            (0x8,   _,   _, 0x2) => self.and(x, y),
-            (0x8,   _,   _, 0x3) => self.xor(x, y),
+            (0x8,   _,   _, 0x1) => self.registers[x as usize] = x_val | y_val, // or
+            (0x8,   _,   _, 0x2) => self.registers[x as usize] = x_val & y_val, // and
+            (0x8,   _,   _, 0x3) => self.registers[x as usize] = x_val ^ y_val, // xor
 
 
-            (0xA,   _,   _,   _) => self.set_i(nnn),
+            (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
             (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             _ => {}
@@ -119,14 +119,6 @@ impl Cpu {
         }
     }
 
-    fn set_x(&mut self, x: u8, nn: u8) {
-        self.registers[x as usize] = nn;
-    }
-
-    fn add_x(&mut self, x: u8, nn: u8) {
-        self.registers[x as usize] += nn;
-    }
-
     fn add_xy(&mut self, x: u8, y: u8) {
         let x_val = self.registers[x as usize];
         let y_val = self.registers[y as usize];
@@ -144,31 +136,6 @@ impl Cpu {
 
         self.registers[x as usize] = result;
         self.registers[0xF] = !overflow as u8;
-    }
-
-    fn or(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
-
-        self.registers[x as usize] = x_val | y_val;
-    }
-
-    fn and(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
-
-        self.registers[x as usize] = x_val & y_val;
-    }
-
-    fn xor(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
-
-        self.registers[x as usize] = x_val ^ y_val;
-    }
-    
-    fn set_i(&mut self, nnn: u16) {
-        self.i_register = nnn;
     }
 
     fn draw_xyn(&mut self, memory: &Memory, screen: &mut Screen, x: u8, y: u8, n: u8) {
@@ -202,7 +169,7 @@ impl Cpu {
     }
 
     fn set_i_to_font_addr(&mut self, x: u8) {
-        self.set_i((memory::FONT_START as u16) + (x as u16) * 5);
+        self.i_register = (memory::FONT_START as u16) + (x as u16) * 5;
     }
 }
 
