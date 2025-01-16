@@ -7,19 +7,22 @@ use crate::{
 };
 
 pub struct Cpu {
-    pub registers: [u8; 16],
-    pub program_counter: usize,
-    pub stack_pointer: usize,
-    pub i_register: u16,
+    registers: [u8; 16],
+    program_counter: usize,
+    stack_pointer: usize,
+    i_register: u16,
+
+    y_shift: bool,
 }
 
 impl Cpu {
-    pub fn new() -> Cpu {
+    pub fn new(flags: Vec<String>) -> Cpu {
         Cpu {
             registers: [0; 16],
             program_counter: memory::PROGRAM_START,
             stack_pointer: 0,
             i_register: 0,
+            y_shift: flags.iter().any(|s| s == "--yshift")
         }
     }
 
@@ -72,8 +75,8 @@ impl Cpu {
             (0x8,   _,   _, 0x2) => self.registers[x as usize] = x_val & y_val, // and
             (0x8,   _,   _, 0x3) => self.registers[x as usize] = x_val ^ y_val, // xor
             
-            (0x8,   _, 0x0, 0x6) => self.shift_right(x),
-            (0x8,   _, 0x0, 0xE) => self.shift_left(x),
+            (0x8,   _,   _, 0x6) => self.shift_right(x, y),
+            (0x8,   _,   _, 0xE) => self.shift_left(x, y),
 
             (0xf,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
 
@@ -158,18 +161,26 @@ impl Cpu {
         self.registers[0xF] = !overflow as u8;
     }
 
-    fn shift_left(&mut self, x: u8) {
-        let x_val = self.registers[x as usize];
+    fn shift_left(&mut self, x: u8, y: u8) {
+        let val = if self.y_shift {
+            self.registers[y as usize]
+        } else {
+             self.registers[x as usize]
+        };
 
-        self.registers[0xF] = x_val >> 7;
-        self.registers[x as usize] = x_val << 1;
+        self.registers[0xF] = val >> 7;
+        self.registers[x as usize] = val << 1;
     }
 
-    fn shift_right(&mut self, x: u8) {
-        let x_val = self.registers[x as usize];
+    fn shift_right(&mut self, x: u8, y: u8) {
+        let val = if self.y_shift {
+            self.registers[y as usize]
+        } else {
+             self.registers[x as usize]
+        };
 
-        self.registers[0xF] = x_val & 0b1;
-        self.registers[x as usize] = x_val >> 1;
+        self.registers[0xF] = val & 0b1;
+        self.registers[x as usize] = val >> 1;
     }
 
     fn bcd_x_to_i(&self, memory: &mut Memory, x: u8) {
@@ -237,7 +248,7 @@ macro_rules! cpu_test {
         let mut cpu = Cpu {
             registers: [0; 16],
             program_counter: memory::PROGRAM_START,
-            ..Cpu::new()
+            ..Cpu::new(vec![])
         };
 
         let mut memory = Memory::new();
