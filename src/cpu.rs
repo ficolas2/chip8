@@ -197,6 +197,9 @@ macro_rules! op {
     (RET) => {
         0x00EE
     };
+    (JMP $loc:literal) => {
+        0x1000 | $loc
+    };
     ($lit:literal) => {
         $lit
     };
@@ -214,6 +217,17 @@ fn test_call_and_ret() {
             op!(RET),
         }
         [10, 20] => [30, 00]
+    );
+}
+
+#[test]
+fn test_jump() {
+    cpu_test!({
+            op!(JMP 204), 
+            op!(ADD 0x0 0x1), 
+            op!(ADD 0x0 0x1)
+        } 
+        [0x01, 0x01] => [0x01, 0x01]
     );
 }
 
