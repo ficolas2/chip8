@@ -73,6 +73,8 @@ impl Cpu {
             (0x8,   _, 0x0, 0x6) => self.shift_right(x),
             (0x8,   _, 0x0, 0xE) => self.shift_left(x),
 
+            (0xf,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x_val),
+
             (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
             (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
@@ -152,6 +154,12 @@ impl Cpu {
 
         self.registers[0xF] = x_val & 0b1;
         self.registers[x as usize] = x_val >> 1;
+    }
+
+    fn bcd_x_to_i(&self, memory: &mut Memory, x_val: u8) {
+        memory[self.i_register as usize] = x_val/100;
+        memory[self.i_register as usize + 1] = (x_val/10) % 10;
+        memory[self.i_register as usize + 2] = x_val % 10;
     }
 
     fn draw_xyn(&mut self, memory: &Memory, screen: &mut Screen, x: u8, y: u8, n: u8) {
