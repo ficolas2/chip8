@@ -1,3 +1,5 @@
+use std::usize;
+
 use crate::{
     memory::{self, Memory},
     screen::Screen,
@@ -63,6 +65,12 @@ impl Cpu {
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
             (0x8,   _,   _, 0x7) => self.sub_xy(y, x),
+
+            (0x8,   _,   _, 0x1) => self.or(x, y),
+            (0x8,   _,   _, 0x2) => self.and(x, y),
+            (0x8,   _,   _, 0x3) => self.xor(x, y),
+
+
             (0xA,   _,   _,   _) => self.set_i(nnn),
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
             (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
@@ -136,6 +144,27 @@ impl Cpu {
 
         self.registers[x as usize] = result;
         self.registers[0xF] = !overflow as u8;
+    }
+
+    fn or(&mut self, x: u8, y: u8) {
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+
+        self.registers[x as usize] = x_val | y_val;
+    }
+
+    fn and(&mut self, x: u8, y: u8) {
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+
+        self.registers[x as usize] = x_val & y_val;
+    }
+
+    fn xor(&mut self, x: u8, y: u8) {
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+
+        self.registers[x as usize] = x_val ^ y_val;
     }
     
     fn set_i(&mut self, nnn: u16) {
@@ -311,4 +340,11 @@ fn test_sub_xn() {
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00
     ]);
+}
+
+#[test]
+fn test_bitwise() {
+    cpu_test!("or v0 v1" [0b001, 0b011] => [0b011]);
+    cpu_test!("and v0 v1" [0b001, 0b011] => [0b001]);
+    cpu_test!("xor v0 v1" [0b001, 0b011] => [0b010]);
 }
