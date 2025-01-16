@@ -3,6 +3,8 @@ use std::ops::{Index, IndexMut};
 const STACK_START: usize = 0x000;
 pub const STACK_SIZE: usize = 16;
 
+pub const FONT_START: usize = 0x050;
+
 pub struct Memory([u8; 0x1000]);
 
 impl Index<usize> for Memory {
@@ -47,6 +49,10 @@ impl Memory {
     pub fn load_program(&mut self, program: &[u8]) {
         for (i, byte) in program.iter().enumerate() {
             self[i + 0x200] = *byte;
+
+    pub fn load_fonts(&mut self, fonts: &[u8]) {
+        for (i, byte) in fonts.iter().enumerate() {
+            self[i + FONT_START] = *byte;
         }
     }
 }
