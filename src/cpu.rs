@@ -61,7 +61,9 @@ impl Cpu {
             (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
 
             (0x6,   _,   _,   _) => self.registers[x as usize] = nn, // vX := nn
-            (0x7,   _,   _,   _) => self.registers[x as usize] += nn, // add vX nn
+            (0x7,   _,   _,   _) => { 
+                self.registers[x as usize] = self.registers[x as usize].wrapping_add(nn) 
+            }, // add vX nn
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
             (0x8,   _,   _, 0x7) => self.sub_xy(y, x),
