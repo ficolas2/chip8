@@ -73,10 +73,14 @@ impl Cpu {
             (0x8,   _, 0x0, 0x6) => self.shift_right(x),
             (0x8,   _, 0x0, 0xE) => self.shift_left(x),
 
-            (0xf,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x_val),
+            (0xf,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
 
             (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
+
+            (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
+            (0xF,   _, 0x6, 0x5) => self.load_reg_at_i(memory, x),
+
             (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             _ => {}
             // _ => panic!("Unknown opcode: {:x}", opcode),
@@ -156,8 +160,10 @@ impl Cpu {
         self.registers[x as usize] = x_val >> 1;
     }
 
-    fn bcd_x_to_i(&self, memory: &mut Memory, x_val: u8) {
-        memory[self.i_register as usize] = x_val/100;
+    fn bcd_x_to_i(&self, memory: &mut Memory, x: u8) {
+        let x_val = self.registers[x as usize];
+
+        memory[self.i_register as usize] = (x_val/100) % 10;
         memory[self.i_register as usize + 1] = (x_val/10) % 10;
         memory[self.i_register as usize + 2] = x_val % 10;
     }
@@ -189,6 +195,18 @@ impl Cpu {
                 }
                 screen[screen_x][screen_y] = bit ^ screen_state;
             }
+        }
+    }
+
+    fn store_reg_at_i(&self, memory: &mut Memory, x: u8) {
+        for i in 0..=x as usize {
+            memory[self.i_register as usize + i] = self.registers[i];
+        }
+    }
+
+    fn load_reg_at_i(&mut self, memory: &Memory, x: u8) {
+        for i in 0..=x as usize {
+            self.registers[i] = memory[self.i_register as usize + i];
         }
     }
 
