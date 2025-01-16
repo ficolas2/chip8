@@ -20,7 +20,6 @@ impl IndexMut<usize> for Memory {
 }
 
 impl Memory {
-
     pub fn new() -> Memory {
         Memory([0; 0x1000])
     }
@@ -28,7 +27,7 @@ impl Memory {
     pub fn set_stack_addr(&mut self, stack_pointer: usize, value: u16) {
         self.set_u16(STACK_START + stack_pointer * 2, value);
     }
-    
+
     pub fn get_stack_addr(&self, stack_pointer: usize) -> u16 {
         self.get_u16(STACK_START + stack_pointer * 2)
     }
@@ -45,5 +44,9 @@ impl Memory {
         self[addr + 1] = value as u8;
     }
 
+    pub fn load_program(&mut self, program: &[u8]) {
+        for (i, byte) in program.iter().enumerate() {
+            self[i + 0x200] = *byte;
+        }
+    }
 }
-

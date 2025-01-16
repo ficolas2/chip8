@@ -4,6 +4,8 @@ use cpu::Cpu;
 use memory::Memory;
 use screen::Screen;
 
+mod assembler;
+
 mod cpu;
 mod memory;
 mod screen;
@@ -38,10 +40,7 @@ fn main() {
     let mut chip8 = Chip8::new();
     let rom = std::fs::read(&args[1]).expect("Failed to read ROM file");
 
-    for (i, byte) in rom.iter().enumerate() {
-        chip8.memory[i + 0x200] = *byte;
-    }
-    println!();
+    chip8.memory.load_program(&rom);
 
     let mut last_draw = std::time::Instant::now();
     loop {
