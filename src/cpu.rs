@@ -1,6 +1,7 @@
 use crate::{
     memory::{self, Memory},
     screen::Screen,
+    assembler
 };
 
 pub struct Cpu {
@@ -85,6 +86,18 @@ impl Cpu {
         self.program_counter = addr as usize;
     }
 
+    fn skip_if_eq(&mut self, x: u8, nn: u8) {
+        if x == nn {
+            self.program_counter += 2;
+        }
+    }
+
+    fn skip_if_neq(&mut self, x: u8, nn: u8) {
+        if x != nn {
+            self.program_counter += 2;
+        }
+    }
+
     fn set_x(&mut self, x: u8, nn: u8) {
         self.registers[x as usize] = nn;
     }
@@ -140,7 +153,7 @@ impl Cpu {
 
 #[cfg(test)]
 macro_rules! cpu_test {
-    ({$($op:expr),+ $(,)?} [ $($reg_in:expr),+  $(,)?] => [ $($reg_out:expr),+  $(,)?]) =>
+    ($asm:literal [ $($reg_in:expr),+  $(,)?] => [ $($reg_out:expr),+  $(,)?]) =>
 
     {
     #[allow(unused_assignments)]
@@ -160,12 +173,8 @@ macro_rules! cpu_test {
         p += 1;
         )+
 
-        p = cpu.program_counter;
-        $(
-            memory[p] = (($op & 0xFF00) >> 8) as u8;
-            memory[p + 1] = ($op & 0x00FF) as u8;
-            p += 2;
-        )+
+        let code = assembler::assemble($asm);
+        memory.load_program(&code);
 
         let mut count = 0;
         while cpu.run(&mut memory, &mut screen) {
@@ -183,81 +192,51 @@ macro_rules! cpu_test {
     }};
 }
 
-#[cfg(test)]
-macro_rules! op {
-    (CALL $loc:literal) => {
-        0x2000 | $loc
-    };
-    (END) => {
-        0x0000
-    };
-    (ADD $reg0:literal $reg1:literal) => {
-        0x8004 | ($reg0 << 8) | ($reg1 << 4)
-    };
-    (RET) => {
-        0x00EE
-    };
-    (JMP $loc:literal) => {
-        0x1000 | $loc
-    };
-    (SETX $x:literal $nn:literal) => {
-        0x6000 | $x << 8 | $nn
-    };
-    (ADDX $x:literal $nn:literal) => {
-        0x7000 | $x << 8 | $nn
-    };
-    ($lit:literal) => {
-        $lit
-    };
-}
-
 #[test]
 fn test_call_and_ret() {
-    println!("{:x}", op!(ADD 0x0 0x1));
-    cpu_test!(
-        {
-            op!(CALL 0x206),
-            op!(END),
-            op!(0xFFFF),
-            op!(ADD 0x0 0x1),
-            op!(RET),
-        }
+    cpu_test!(r#"
+            jsr 0x204
+            end
+            add v0 v1
+            rts
+            add v0 0x2
+        "#
         [10, 20] => [30, 00]
     );
 }
 
 #[test]
 fn test_jump() {
-    cpu_test!({
-            op!(JMP 204), 
-            op!(ADD 0x0 0x1), 
-            op!(ADD 0x0 0x1)
-        } 
+    cpu_test!(r#"
+            jmp 0x206
+            add v0 0x2
+            add v0 0x5
+        "# 
         [0x01, 0x01] => [0x01, 0x01]
     );
 }
 
 #[test]
 fn test_set_x() {
-    cpu_test!({ op!(SETX 0x02 0x10) } [0x01, 0x02] => [0x01, 0x02, 0x10]);
+    cpu_test!("mov v2 0x10" [0x01, 0x02] => [0x01, 0x02, 0x10]);
 }
 
 #[test]
 fn test_add_x() {
-    cpu_test!({ op!(ADDX 0x0 0x10) } [0x10, 0x20] => [0x20, 0x20]);
+    cpu_test!("add v0 0x10" [0x10, 0x20] => [0x20, 0x20]);
 }
 
 #[test]
 fn test_add_xy() {
-    cpu_test!({ op!(ADD 0x0 0x1) }                   [0x10, 0x20] => [0x30, 0x00]);
-    cpu_test!({ op!(ADD 0x0 0x1) }                   [0xFF, 0x01] => [0x00, 0x01]); //Overflow
-    cpu_test!({ op!(ADD 0x0 0x1), op!(ADD 0x0 0x1) } [0xFF, 0x01] => [0x01, 0x00]); //Overflow
+    cpu_test!("add v0 v1" [0x10, 0x20] => [0x30, 0x00]);
+    cpu_test!("add v0 v1" [0xFF, 0x01] => [0x00, 0x01]); //Overflow
+    cpu_test!("add v0 v1; add v0 v1" [0xFF, 0x01] => [0x01, 0x00]); //Overflow
 
-    cpu_test!({ 
-            op!(ADD 0x0 0x1), 
-            op!(ADD 0x0 0x2), 
-            op!(ADD 0x0 0x3) 
-        } 
+    cpu_test!(r#"
+            add v0 v1
+            add v0 v2
+            add v0 v3
+        "#
         [0x01, 0x02, 0x03, 0x04] => [0x0A, 0x00, 0x03, 0x04]
     );
 }
