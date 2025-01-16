@@ -29,7 +29,7 @@ impl Cpu {
     }
 
     #[rustfmt::skip]
-    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen) {
+    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen) -> bool {
         let opcode = self.read_opcode(memory);
         self.program_counter += 2;
 
@@ -43,7 +43,7 @@ impl Cpu {
         let nnn = opcode & 0x0FFF;
 
         match (c, x, y, d) {
-            (  0,   0,   0,   0) => {}
+            (  0,   0,   0,   0) => { return false;}
             (  0,   0, 0xE,   0) => self.clear_screen(screen),
             (  0,   0, 0xE, 0xE) => self.ret(memory),
             (0x1,   _,   _,   _) => self.jump(nnn),
@@ -52,9 +52,10 @@ impl Cpu {
             (0x7,   _,   _,   _) => self.add_x(x, nn),
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0xA,   _,   _,   _) => self.set_i(nnn),
-            (0xD, _, _, _) => self.draw_xyn(memory, screen, x, y, n),
+            (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
             _ => panic!("Unknown opcode: {:x}", opcode),
-        }
+        };
+        true
     }
 
     fn clear_screen(&mut self, screen: &mut Screen) {
@@ -165,7 +166,14 @@ macro_rules! cpu_test {
             memory[p + 1] = ($op & 0x00FF) as u8;
             p += 2;
         )+
-        cpu.run(&mut memory, &mut screen);
+
+        let mut count = 0;
+        while cpu.run(&mut memory, &mut screen) {
+            count += 1;
+            if count > 10000 {
+                panic!("Looped for too long for a test (10000 iterations)");
+            }
+        }
 
         p = 0;
         $(
@@ -195,20 +203,11 @@ macro_rules! op {
 }
 
 #[test]
-fn test_add_xy() {
-    cpu_test!({ 0x8014 }         [0x10, 0x20] => [0x30, 0x00]);
-    cpu_test!({ 0x8014 }         [0xFF, 0x01] => [0x00, 0x01]); //Overflow
-    cpu_test!({ 0x8014, 0x8014 } [0xFF, 0x01] => [0x01, 0x00]); //Overflow
-
-    cpu_test!({ 0x8014, 0x8024, 0x8034 } [0x01, 0x02, 0x03, 0x04] => [0x0A, 0x00, 0x03, 0x04]);
-}
-
-#[test]
-fn call_and_ret() {
+fn test_call_and_ret() {
     println!("{:x}", op!(ADD 0x0 0x1));
     cpu_test!(
         {
-            op!(CALL 0x106),
+            op!(CALL 0x206),
             op!(END),
             op!(0xFFFF),
             op!(ADD 0x0 0x1),
@@ -216,4 +215,13 @@ fn call_and_ret() {
         }
         [10, 20] => [30, 00]
     );
+}
+
+#[test]
+fn test_add_xy() {
+    cpu_test!({ 0x8014 }         [0x10, 0x20] => [0x30, 0x00]);
+    cpu_test!({ 0x8014 }         [0xFF, 0x01] => [0x00, 0x01]); //Overflow
+    cpu_test!({ 0x8014, 0x8014 } [0xFF, 0x01] => [0x01, 0x00]); //Overflow
+
+    cpu_test!({ 0x8014, 0x8024, 0x8034 } [0x01, 0x02, 0x03, 0x04] => [0x0A, 0x00, 0x03, 0x04]);
 }
