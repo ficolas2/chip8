@@ -200,6 +200,9 @@ macro_rules! op {
     (JMP $loc:literal) => {
         0x1000 | $loc
     };
+    (SETX $x:literal $nn:literal) => {
+        0x6000 | $x << 8 | $nn
+    };
     ($lit:literal) => {
         $lit
     };
@@ -232,6 +235,11 @@ fn test_jump() {
 }
 
 #[test]
+fn test_set_x() {
+    cpu_test!({ op!(SETX 0x02 0x10) } [0x01, 0x02] => [0x01, 0x02, 0x10]);
+}
+
+#[test]
 fn test_add_xy() {
     cpu_test!({ op!(ADD 0x0 0x1) }                   [0x10, 0x20] => [0x30, 0x00]);
     cpu_test!({ op!(ADD 0x0 0x1) }                   [0xFF, 0x01] => [0x00, 0x01]); //Overflow
@@ -244,5 +252,4 @@ fn test_add_xy() {
         } 
         [0x01, 0x02, 0x03, 0x04] => [0x0A, 0x00, 0x03, 0x04]
     );
-
 }
