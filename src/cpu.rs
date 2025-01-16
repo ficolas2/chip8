@@ -69,7 +69,9 @@ impl Cpu {
             (0x8,   _,   _, 0x1) => self.registers[x as usize] = x_val | y_val, // or
             (0x8,   _,   _, 0x2) => self.registers[x as usize] = x_val & y_val, // and
             (0x8,   _,   _, 0x3) => self.registers[x as usize] = x_val ^ y_val, // xor
-
+            
+            (0x8,   _, 0x0, 0x6) => self.shift_right(x),
+            (0x8,   _, 0x0, 0xE) => self.shift_left(x),
 
             (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
@@ -136,6 +138,20 @@ impl Cpu {
 
         self.registers[x as usize] = result;
         self.registers[0xF] = !overflow as u8;
+    }
+
+    fn shift_left(&mut self, x: u8) {
+        let x_val = self.registers[x as usize];
+
+        self.registers[0xF] = x_val >> 7;
+        self.registers[x as usize] = x_val << 1;
+    }
+
+    fn shift_right(&mut self, x: u8) {
+        let x_val = self.registers[x as usize];
+
+        self.registers[0xF] = x_val & 0b1;
+        self.registers[x as usize] = x_val >> 1;
     }
 
     fn draw_xyn(&mut self, memory: &Memory, screen: &mut Screen, x: u8, y: u8, n: u8) {
@@ -313,4 +329,21 @@ fn test_bitwise() {
     cpu_test!("or v0 v1" [0b001, 0b011] => [0b011]);
     cpu_test!("and v0 v1" [0b001, 0b011] => [0b001]);
     cpu_test!("xor v0 v1" [0b001, 0b011] => [0b010]);
+}
+
+#[test]
+fn test_shift() {
+    cpu_test!("shr v0" [0b011] => [
+        0b01, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x01
+    ]);
+    cpu_test!("shl v0" [0b10000001] => [
+        0b10, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x01
+    ]);
+
 }
