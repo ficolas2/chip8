@@ -61,6 +61,8 @@ impl Cpu {
             (0x6,   _,   _,   _) => self.set_x(x, nn),
             (0x7,   _,   _,   _) => self.add_x(x, nn),
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+            (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
+            (0x8,   _,   _, 0x7) => self.sub_xy(y, x),
             (0xA,   _,   _,   _) => self.set_i(nnn),
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
             (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
@@ -127,6 +129,15 @@ impl Cpu {
         self.registers[1] = overflow as u8;
     }
 
+    fn sub_xy(&mut self, x: u8, y: u8) {
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+        let (result, overflow) = x_val.overflowing_sub(y_val);
+
+        self.registers[x as usize] = result;
+        self.registers[0xF] = !overflow as u8;
+    }
+    
     fn set_i(&mut self, nnn: u16) {
         self.i_register = nnn;
     }
@@ -268,4 +279,36 @@ fn test_add_xy() {
         "#
         [0x01, 0x02, 0x03, 0x04] => [0x0A, 0x00, 0x03, 0x04]
     );
+}
+
+#[test]
+fn test_sub_xy() {
+    cpu_test!("sub v0 v1" [0x20, 0x10] => [
+        0x10, 0x10, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 
+        0x00, 0x00, 0x00, 0x00, 
+        0x00, 0x00, 0x00, 0x01
+    ]);
+    cpu_test!("sub v0 v1" [0x10, 0x20] => [
+        0xF0, 0x20, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00
+    ]);
+}
+
+#[test]
+fn test_sub_xn() {
+    cpu_test!("rsb v1 v0" [0x20, 0x10] => [
+        0x10, 0x10, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 
+        0x00, 0x00, 0x00, 0x00, 
+        0x00, 0x00, 0x00, 0x01
+    ]);
+    cpu_test!("rsb v1 v0" [0x10, 0x20] => [
+        0xF0, 0x20, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00
+    ]);
 }
