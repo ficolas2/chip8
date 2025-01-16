@@ -4,6 +4,7 @@ const STACK_START: usize = 0x000;
 pub const STACK_SIZE: usize = 16;
 
 pub const FONT_START: usize = 0x050;
+pub const PROGRAM_START: usize = 0x200;
 
 pub struct Memory([u8; 0x1000]);
 
@@ -48,7 +49,9 @@ impl Memory {
 
     pub fn load_program(&mut self, program: &[u8]) {
         for (i, byte) in program.iter().enumerate() {
-            self[i + 0x200] = *byte;
+            self[i + PROGRAM_START] = *byte;
+        }
+    }
 
     pub fn load_fonts(&mut self, fonts: &[u8]) {
         for (i, byte) in fonts.iter().enumerate() {

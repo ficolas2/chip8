@@ -15,7 +15,7 @@ impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
             registers: [0; 16],
-            program_counter: 0x200,
+            program_counter: memory::PROGRAM_START,
             stack_pointer: 0,
             i_register: 0,
         }
@@ -54,7 +54,8 @@ impl Cpu {
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0xA,   _,   _,   _) => self.set_i(nnn),
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
-            _ => panic!("Unknown opcode: {:x}", opcode),
+            _ => {}
+            // _ => panic!("Unknown opcode: {:x}", opcode),
         };
         true
     }
@@ -160,7 +161,7 @@ macro_rules! cpu_test {
     {
         let mut cpu = Cpu {
             registers: [0; 16],
-            program_counter: 0x200,
+            program_counter: memory::PROGRAM_START,
             ..Cpu::new()
         };
 
