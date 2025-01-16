@@ -203,6 +203,9 @@ macro_rules! op {
     (SETX $x:literal $nn:literal) => {
         0x6000 | $x << 8 | $nn
     };
+    (ADDX $x:literal $nn:literal) => {
+        0x7000 | $x << 8 | $nn
+    };
     ($lit:literal) => {
         $lit
     };
@@ -237,6 +240,11 @@ fn test_jump() {
 #[test]
 fn test_set_x() {
     cpu_test!({ op!(SETX 0x02 0x10) } [0x01, 0x02] => [0x01, 0x02, 0x10]);
+}
+
+#[test]
+fn test_add_x() {
+    cpu_test!({ op!(ADDX 0x0 0x10) } [0x10, 0x20] => [0x20, 0x20]);
 }
 
 #[test]
