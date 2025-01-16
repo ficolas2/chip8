@@ -66,7 +66,7 @@ impl Cpu {
             }, // add vX nn
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
-            (0x8,   _,   _, 0x7) => self.sub_xy(y, x),
+            (0x8,   _,   _, 0x7) => self.rsb_xy(x, y),
 
             (0x8,   _,   _, 0x1) => self.registers[x as usize] = x_val | y_val, // or
             (0x8,   _,   _, 0x2) => self.registers[x as usize] = x_val & y_val, // and
@@ -80,6 +80,7 @@ impl Cpu {
             (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
 
+            (0x8,   _,   _, 0x0) => self.registers[x as usize] = self.registers[y as usize],
             (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
             (0xF,   _, 0x6, 0x5) => self.load_reg_at_i(memory, x),
 
@@ -143,6 +144,15 @@ impl Cpu {
         let x_val = self.registers[x as usize];
         let y_val = self.registers[y as usize];
         let (result, overflow) = x_val.overflowing_sub(y_val);
+
+        self.registers[x as usize] = result;
+        self.registers[0xF] = !overflow as u8;
+    }
+
+    fn rsb_xy(&mut self, x: u8, y: u8) {
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+        let (result, overflow) = y_val.overflowing_sub(x_val);
 
         self.registers[x as usize] = result;
         self.registers[0xF] = !overflow as u8;
@@ -253,7 +263,14 @@ macro_rules! cpu_test {
         p = 0;
         $(
             p += 1;
-            assert_eq!(cpu.registers[p - 1], $reg_out);
+        
+            assert_eq!(
+                cpu.registers[p - 1], $reg_out, 
+                "v{} is not equal to 0x{:x}, it is 0x{:x}", 
+                p - 1, 
+                $reg_out,
+                cpu.registers[p-1],
+            );
         )+
     }};
 }
@@ -334,10 +351,6 @@ fn test_sub_xy() {
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00
     ]);
-}
-
-#[test]
-fn test_sub_xn() {
     cpu_test!("rsb v1 v0" [0x20, 0x10] => [
         0x10, 0x10, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00,
