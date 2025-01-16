@@ -54,6 +54,7 @@ impl Cpu {
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0xA,   _,   _,   _) => self.set_i(nnn),
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
+            (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             _ => {}
             // _ => panic!("Unknown opcode: {:x}", opcode),
         };
@@ -149,6 +150,10 @@ impl Cpu {
                 screen[screen_x][screen_y] = bit ^ screen_state;
             }
         }
+    }
+
+    fn set_i_to_font_addr(&mut self, x: u8) {
+        self.set_i((memory::FONT_START as u16) + (x as u16) * 5);
     }
 }
 
