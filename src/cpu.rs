@@ -43,12 +43,21 @@ impl Cpu {
         let nn = (opcode & 0x00FF) as u8;
         let nnn = opcode & 0x0FFF;
 
+        let x_val = self.registers[x as usize];
+        let y_val = self.registers[y as usize];
+
         match (c, x, y, d) {
             (  0,   0,   0,   0) => { return false;}
             (  0,   0, 0xE,   0) => self.clear_screen(screen),
             (  0,   0, 0xE, 0xE) => self.ret(memory),
             (0x1,   _,   _,   _) => self.jump(nnn),
             (0x2,   _,   _,   _) => self.call(nnn, memory),
+
+            (0x3,   _,   _,   _) => self.skip_if_eq(x_val, nn),
+            (0x4,   _,   _,   _) => self.skip_if_neq(x_val, nn),
+            (0x5,   _,   _,   0) => self.skip_if_eq(x_val, y_val),
+            (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
+
             (0x6,   _,   _,   _) => self.set_x(x, nn),
             (0x7,   _,   _,   _) => self.add_x(x, nn),
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
@@ -209,6 +218,20 @@ fn test_call_and_ret() {
         "#
         [10, 20] => [30, 00]
     );
+}
+
+
+#[test]
+fn test_skip() {
+    cpu_test!("skeq v0 0x10; add v1 0x1" [0x10, 0x00] => [0x10, 0x00]);
+    cpu_test!("skeq v0 v1;   add v1 0x2" [0x01, 0x01] => [0x01, 0x01]);
+    cpu_test!("skne v0 0x10; add v1 0x1" [0x10, 0x00] => [0x10, 0x01]);
+    cpu_test!("skne v0 v1;   add v1 0x2" [0x01, 0x01] => [0x01, 0x03]);
+
+    cpu_test!("skeq v0 0x10; add v1 0x1" [0x11, 0x00] => [0x11, 0x01]);
+    cpu_test!("skeq v0 v1;   add v1 0x2" [0x02, 0x01] => [0x02, 0x03]);
+    cpu_test!("skne v0 0x10; add v1 0x1" [0x11, 0x00] => [0x11, 0x00]);
+    cpu_test!("skne v0 v1;   add v1 0x2" [0x02, 0x01] => [0x02, 0x01]);
 }
 
 #[test]
