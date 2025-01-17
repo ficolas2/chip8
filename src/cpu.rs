@@ -400,3 +400,28 @@ fn test_shift() {
     ]);
 
 }
+
+#[test]
+fn test_load_and_store() {
+    cpu_test!(r#"
+            mvi 0x250
+            str v2
+            mov v0 0x00
+            mov v1 0x00
+            mov v2 0x00
+            ldr v2
+        "#
+        [1, 2,  3] => [1, 2, 3]
+    )
+}
+
+#[test]
+fn test_bce() {
+    cpu_test!(r#"
+            mvi 0x250
+            bcd v0
+            ldr v2
+        "#
+        [123] => [1, 2, 3]
+    )
+}
