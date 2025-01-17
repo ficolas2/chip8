@@ -57,38 +57,30 @@ impl Cpu {
             (  0,   0, 0xE, 0xE) => self.ret(memory),
             (0x1,   _,   _,   _) => self.jump(nnn),
             (0x2,   _,   _,   _) => self.call(nnn, memory),
-
             (0x3,   _,   _,   _) => self.skip_if_eq(x_val, nn),
             (0x4,   _,   _,   _) => self.skip_if_neq(x_val, nn),
             (0x5,   _,   _,   0) => self.skip_if_eq(x_val, y_val),
-            (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
-
             (0x6,   _,   _,   _) => self.registers[x as usize] = nn, // vX := nn
             (0x7,   _,   _,   _) => { 
                 self.registers[x as usize] = self.registers[x as usize].wrapping_add(nn) 
             }, // add vX nn
-            (0x8,   _,   _, 0x4) => self.add_xy(x, y),
-            (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
-            (0x8,   _,   _, 0x7) => self.rsb_xy(x, y),
-
+            (0x8,   _,   _, 0x0) => self.registers[x as usize] = self.registers[y as usize],
             (0x8,   _,   _, 0x1) => self.registers[x as usize] = x_val | y_val, // or
             (0x8,   _,   _, 0x2) => self.registers[x as usize] = x_val & y_val, // and
             (0x8,   _,   _, 0x3) => self.registers[x as usize] = x_val ^ y_val, // xor
-            
+            (0x8,   _,   _, 0x4) => self.add_xy(x, y),
+            (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
             (0x8,   _,   _, 0x6) => self.shift_right(x, y),
+            (0x8,   _,   _, 0x7) => self.rsb_xy(x, y),
             (0x8,   _,   _, 0xE) => self.shift_left(x, y),
-
-            (0xf,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
-
+            (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
             (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
-
-            (0x8,   _,   _, 0x0) => self.registers[x as usize] = self.registers[y as usize],
+            (0xF,   _, 0x1, 0xE) => self.i_register += x_val as u16,
+            (0xF,   _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
+            (0xF,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
             (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
             (0xF,   _, 0x6, 0x5) => self.load_reg_at_i(memory, x),
-            (0xF,   _, 0x1, 0xE) => self.i_register += x_val as u16,
-
-            (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             _ => {}
             // _ => panic!("Unknown opcode: {:x}", opcode),
         };
