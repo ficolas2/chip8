@@ -183,8 +183,8 @@ impl Cpu {
             self.v[x as usize]
         };
 
-        self.v[0xF] = val >> 7;
         self.v[x as usize] = val << 1;
+        self.v[0xF] = val >> 7;
     }
 
     fn shift_right(&mut self, x: u8, y: u8) {
@@ -194,8 +194,8 @@ impl Cpu {
             self.v[x as usize]
         };
 
-        self.v[0xF] = val & 0b1;
         self.v[x as usize] = val >> 1;
+        self.v[0xF] = val & 1;
     }
 
     fn bcd_x_to_i(&self, memory: &mut Memory, x: u8) {
