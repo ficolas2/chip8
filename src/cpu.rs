@@ -3,8 +3,7 @@ use crate::assembler;
 use rand::Rng;
 
 use crate::{
-    memory::{self, Memory},
-    screen::Screen,
+    keyboard::Keyboard, memory::{self, Memory}, screen::Screen
 };
 
 pub struct Cpu {
@@ -36,7 +35,7 @@ impl Cpu {
     }
 
     #[rustfmt::skip]
-    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen) -> bool {
+    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen, keyboard: &mut Keyboard) -> bool {
         let opcode = self.read_opcode(memory);
         self.pc += 2;
 
@@ -79,7 +78,10 @@ impl Cpu {
             (0xB,   _,   _,   _) => self.pc = nnn as usize + self.v[0] as usize,
             (0xC,   _,   _,   _) => self.rand(x, nn),
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
+            (0xE,   _, 0x9, 0xE) => self.skip_if_key(keyboard, x_val, true),
+            (0xE,   _, 0xA, 0x1) => self.skip_if_key(keyboard, x_val, false),
             (0xF,   _, 0x1, 0xE) => self.i += x_val as u16,
+            (0xF,   _, 0x0, 0xA) => self.wait_for(keyboard[x_val as usize]),
             (0xF,   _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             (0xF,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
             (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
@@ -117,15 +119,32 @@ impl Cpu {
         self.pc = addr as usize;
     }
 
-    fn skip_if_eq(&mut self, x: u8, nn: u8) {
+    fn skip_if_eq<T>(&mut self, x: T, nn: T) 
+    where 
+        T: PartialEq
+    {
         if x == nn {
             self.pc += 2;
         }
     }
 
-    fn skip_if_neq(&mut self, x: u8, nn: u8) {
+    fn skip_if_neq<T>(&mut self, x: T, nn: T) 
+    where 
+        T: PartialEq
+    {
         if x != nn {
             self.pc += 2;
+        }
+    }
+
+    fn skip_if_key(&mut self, keyboard: &mut Keyboard, key: u8, val: bool) {
+        self.skip_if_eq(keyboard[key as usize], val);
+        keyboard[key as usize] = false;
+    }
+
+    fn wait_for(&mut self, val: bool) {
+        if !val {
+            self.pc -= 2;
         }
     }
 
@@ -248,11 +267,12 @@ macro_rules! cpu_test {
         let mut cpu = Cpu {
             v: [0; 16],
             pc: memory::PROGRAM_START,
-            ..Cpu::new(vec![])
+            ..Cpu::new(&vec![])
         };
 
         let mut memory = Memory::new();
         let mut screen = Screen::new();
+        let mut keyboard = Keyboard::new();
 
         let mut p = 0;
         $(
@@ -264,7 +284,7 @@ macro_rules! cpu_test {
         memory.load_program(&code);
 
         let mut count = 0;
-        while cpu.run(&mut memory, &mut screen) {
+        while cpu.run(&mut memory, &mut screen, &mut keyboard) {
             count += 1;
             if count > 10000 {
                 panic!("Looped for too long for a test (10000 iterations)");
