@@ -4,6 +4,7 @@ use std::ops::{Index, IndexMut};
 pub struct Screen {
     current: [[bool; 32]; 64],
     redraw: bool,
+    last_draw: std::time::Instant,
 }
 
 impl Screen {
@@ -11,10 +12,15 @@ impl Screen {
         Screen {
             current: [[false; 32]; 64],
             redraw: false,
+            last_draw: std::time::Instant::now(),
         }
     }
 
     pub fn draw(&mut self) {
+        if self.last_draw.elapsed().as_millis() < 1000 / 60 {
+            return;
+        }
+        self.last_draw = std::time::Instant::now();
         if !self.redraw {
             return;
         }

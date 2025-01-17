@@ -37,19 +37,13 @@ impl Chip8 {
     }
 
     pub fn run(&mut self) {
-        let mut last_draw = std::time::Instant::now();
         loop {
             self.keyboard.update();
-            let cont = self.cpu.run(&mut self.memory, &mut self.screen, &self.keyboard);
+            let cont = self.cpu.run(&mut self.memory, &mut self.screen, &mut self.keyboard);
             if !cont {
                 break;
             }
 
-            std::thread::sleep(std::time::Duration::from_millis(2));
-            if last_draw.elapsed().as_millis() < 1000 / 60 {
-                continue;
-            }
-            last_draw = std::time::Instant::now();
             self.screen.draw();
         }
     }
@@ -75,6 +69,11 @@ fn main() {
         .expect("No ROM file specified");
     let mut chip8 = Chip8::new(flags);
     let rom = std::fs::read(rom_path).expect("Failed to read ROM file");
+
+    // let rom = assemble(r#"
+    // skpr v0
+    // jmp 0x200
+    // "#);
 
     println!("Loading ROM {}", rom_path);
 
