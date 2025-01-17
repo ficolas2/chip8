@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::assembler;
+use rand::Rng;
 
 use crate::{
     memory::{self, Memory},
@@ -76,6 +77,7 @@ impl Cpu {
             (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
             (0xA,   _,   _,   _) => self.i = nnn, // i := nnn
             (0xB,   _,   _,   _) => self.pc = nnn as usize + self.v[0] as usize,
+            (0xC,   _,   _,   _) => self.rand(x, nn),
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
             (0xF,   _, 0x1, 0xE) => self.i += x_val as u16,
             (0xF,   _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
@@ -229,6 +231,10 @@ impl Cpu {
 
     fn set_i_to_font_addr(&mut self, x: u8) {
         self.i = (memory::FONT_START as u16) + (x as u16) * 5;
+    }
+
+    fn rand(&mut self, x: u8, nn: u8) {
+        self.v[x as usize] = rand::thread_rng().gen_range(0..=nn);
     }
 }
 
