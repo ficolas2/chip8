@@ -86,6 +86,7 @@ impl Cpu {
             (0x8,   _,   _, 0x0) => self.registers[x as usize] = self.registers[y as usize],
             (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
             (0xF,   _, 0x6, 0x5) => self.load_reg_at_i(memory, x),
+            (0xF,   _, 0x1, 0xE) => self.i_register += x_val as u16,
 
             (0xF, _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             _ => {}
