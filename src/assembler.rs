@@ -34,16 +34,15 @@ pub fn assemble(assembly_code: &str) -> Vec<u8> {
             "jmi" => 0xB000 | parse_num_or_err(tokens[1], i),
             "rand" => 0xC000 | parse_xnn(tokens, i),
             "sprite" => 0xD000 | parse_xyn(tokens, i),
-            // skpr
-            // skup
-            // gdelay
-            // key
-            // sdelay
-            // ssound
-            // adi
-            // font
-            // bcd
-            "bcd" => 0xF033 | parse_reg_or_err(tokens[1], i),
+            "skpr" => 0xE09E | parse_reg_or_err(tokens[1], i) << 8,
+            "skup" => 0xE0A1 | parse_reg_or_err(tokens[1], i) << 8,
+            "gdelay" => 0xF007 | parse_reg_or_err(tokens[1], i) << 8,
+            "key" => 0xF00A | parse_reg_or_err(tokens[1], i) << 8,
+            "sdelay" => 0xF015 | parse_reg_or_err(tokens[1], i) << 8,
+            "ssound" => 0xF018 | parse_reg_or_err(tokens[1], i) << 8,
+            "adi" => 0xF01E | parse_reg_or_err(tokens[1], i) << 8,
+            "font" => 0xF029 | parse_reg_or_err(tokens[1], i) << 8,
+            "bcd" => 0xF033 | parse_reg_or_err(tokens[1], i) << 8,
             "str" => 0xF055 | parse_reg_or_err(tokens[1], i) << 8,
             "ldr" => 0xF065 | parse_reg_or_err(tokens[1], i) << 8,
 
