@@ -1,6 +1,7 @@
 use std::env;
 
 use cpu::Cpu;
+use keyboard::Keyboard;
 use memory::Memory;
 use screen::Screen;
 
@@ -8,6 +9,7 @@ mod assembler;
 
 mod cpu;
 mod fonts;
+mod keyboard;
 mod memory;
 mod screen;
 
@@ -21,6 +23,7 @@ struct Chip8 {
     cpu: Cpu,
     memory: Memory,
     screen: Screen,
+    keyboard: keyboard::Keyboard,
 }
 
 impl Chip8 {
@@ -29,11 +32,23 @@ impl Chip8 {
             cpu: Cpu::new(flags),
             memory: Memory::new(),
             screen: Screen::new(),
+            keyboard: Keyboard::new(),
         }
     }
 
     pub fn run(&mut self) {
-        self.cpu.run(&mut self.memory, &mut self.screen);
+        let mut last_draw = std::time::Instant::now();
+        loop {
+            self.cpu.run(&mut self.memory, &mut self.screen);
+            self.keyboard.update();
+
+            std::thread::sleep(std::time::Duration::from_millis(2));
+            if last_draw.elapsed().as_millis() < 1000 / 60 {
+                continue;
+            }
+            last_draw = std::time::Instant::now();
+            self.screen.draw();
+        }
     }
 }
 
@@ -63,14 +78,5 @@ fn main() {
     chip8.memory.load_fonts(fonts::FONT);
     chip8.memory.load_program(&rom);
 
-    let mut last_draw = std::time::Instant::now();
-    loop {
-        chip8.run();
-        std::thread::sleep(std::time::Duration::from_millis(2));
-        if last_draw.elapsed().as_millis() < 1000 / 60 {
-            continue;
-        }
-        last_draw = std::time::Instant::now();
-        chip8.screen.draw();
-    }
+    chip8.run();
 }
