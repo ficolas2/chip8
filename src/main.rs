@@ -39,8 +39,11 @@ impl Chip8 {
     pub fn run(&mut self) {
         let mut last_draw = std::time::Instant::now();
         loop {
-            self.cpu.run(&mut self.memory, &mut self.screen);
             self.keyboard.update();
+            let cont = self.cpu.run(&mut self.memory, &mut self.screen, &self.keyboard);
+            if !cont {
+                break;
+            }
 
             std::thread::sleep(std::time::Duration::from_millis(2));
             if last_draw.elapsed().as_millis() < 1000 / 60 {
