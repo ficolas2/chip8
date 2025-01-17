@@ -155,7 +155,7 @@ impl Cpu {
         let (result, overflow) = x_val.overflowing_add(y_val);
 
         self.v[x as usize] = result;
-        self.v[1] = overflow as u8;
+        self.v[0xF] = overflow as u8;
     }
 
     fn sub_xy(&mut self, x: u8, y: u8) {
@@ -315,7 +315,7 @@ fn test_call_and_ret() {
             rts
             add v0 0x2
         "#
-        [10, 20] => [30, 00]
+        [10, 20] => [30, 20]
     );
 }
 
@@ -355,17 +355,19 @@ fn test_add_x() {
 
 #[test]
 fn test_add_xy() {
-    cpu_test!("add v0 v1" [0x10, 0x20] => [0x30, 0x00]);
-    cpu_test!("add v0 v1" [0xFF, 0x01] => [0x00, 0x01]); //Overflow
-    cpu_test!("add v0 v1; add v0 v1" [0xFF, 0x01] => [0x01, 0x00]); //Overflow
-
-    cpu_test!(r#"
-            add v0 v1
-            add v0 v2
-            add v0 v3
-        "#
-        [0x01, 0x02, 0x03, 0x04] => [0x0A, 0x00, 0x03, 0x04]
-    );
+    cpu_test!("add v0 v1" [0x10, 0x20] => [0x30, 0x20]);
+    cpu_test!("add v0 v1" [0xFF, 0x01] => [
+        0x00, 0x01, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x01
+    ]); //Overflow
+    cpu_test!("add v0 v1; add v0 v1" [0xFF, 0x01] => [
+        0x01, 0x01, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00
+    ]); //Overflow
 }
 
 #[test]
