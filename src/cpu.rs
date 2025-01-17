@@ -7,10 +7,10 @@ use crate::{
 };
 
 pub struct Cpu {
-    registers: [u8; 16],
-    program_counter: usize,
+    v: [u8; 16],
+    pc: usize,
     stack_pointer: usize,
-    i_register: u16,
+    i: u16,
 
     y_shift: bool,
 }
@@ -18,16 +18,16 @@ pub struct Cpu {
 impl Cpu {
     pub fn new(flags: Vec<String>) -> Cpu {
         Cpu {
-            registers: [0; 16],
-            program_counter: memory::PROGRAM_START,
-            stack_pointer: 0,
-            i_register: 0,
-            y_shift: flags.iter().any(|s| s == "--yshift")
+            v: [0; 16],                // Registers
+            pc: memory::PROGRAM_START, // Program counter
+            stack_pointer: 0,          // Stack pointer
+            i: 0,                      // Index register
+            y_shift: flags.iter().any(|s| s == "--yshift"),
         }
     }
 
     fn read_opcode(&self, memory: &Memory) -> u16 {
-        let p = self.program_counter;
+        let p = self.pc;
         let most_significant = memory[p] as u16;
         let least_significant = memory[p + 1] as u16;
 
@@ -37,7 +37,7 @@ impl Cpu {
     #[rustfmt::skip]
     pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen) -> bool {
         let opcode = self.read_opcode(memory);
-        self.program_counter += 2;
+        self.pc += 2;
 
         let c = ((opcode & 0xF000) >> 12) as u8;
         let x = ((opcode & 0x0F00) >> 8) as u8;
@@ -48,8 +48,8 @@ impl Cpu {
         let nn = (opcode & 0x00FF) as u8;
         let nnn = opcode & 0x0FFF;
 
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
+        let x_val = self.v[x as usize];
+        let y_val = self.v[y as usize];
 
         match (c, x, y, d) {
             (  0,   0,   0,   0) => { return false;}
@@ -60,23 +60,24 @@ impl Cpu {
             (0x3,   _,   _,   _) => self.skip_if_eq(x_val, nn),
             (0x4,   _,   _,   _) => self.skip_if_neq(x_val, nn),
             (0x5,   _,   _,   0) => self.skip_if_eq(x_val, y_val),
-            (0x6,   _,   _,   _) => self.registers[x as usize] = nn, // vX := nn
+            (0x6,   _,   _,   _) => self.v[x as usize] = nn, // vX := nn
             (0x7,   _,   _,   _) => { 
-                self.registers[x as usize] = self.registers[x as usize].wrapping_add(nn) 
+                self.v[x as usize] = self.v[x as usize].wrapping_add(nn) 
             }, // add vX nn
-            (0x8,   _,   _, 0x0) => self.registers[x as usize] = self.registers[y as usize],
-            (0x8,   _,   _, 0x1) => self.registers[x as usize] = x_val | y_val, // or
-            (0x8,   _,   _, 0x2) => self.registers[x as usize] = x_val & y_val, // and
-            (0x8,   _,   _, 0x3) => self.registers[x as usize] = x_val ^ y_val, // xor
+            (0x8,   _,   _, 0x0) => self.v[x as usize] = self.v[y as usize],
+            (0x8,   _,   _, 0x1) => self.v[x as usize] = x_val | y_val, // or
+            (0x8,   _,   _, 0x2) => self.v[x as usize] = x_val & y_val, // and
+            (0x8,   _,   _, 0x3) => self.v[x as usize] = x_val ^ y_val, // xor
             (0x8,   _,   _, 0x4) => self.add_xy(x, y),
             (0x8,   _,   _, 0x5) => self.sub_xy(x, y),
             (0x8,   _,   _, 0x6) => self.shift_right(x, y),
             (0x8,   _,   _, 0x7) => self.rsb_xy(x, y),
             (0x8,   _,   _, 0xE) => self.shift_left(x, y),
             (0x9,   _,   _,   _) => self.skip_if_neq(x_val, y_val),
-            (0xA,   _,   _,   _) => self.i_register = nnn, // i := nnn
+            (0xA,   _,   _,   _) => self.i = nnn, // i := nnn
+            (0xB,   _,   _,   _) => self.pc = nnn as usize + self.v[0] as usize,
             (0xD,   _,   _,   _) => self.draw_xyn(memory, screen, x, y, n),
-            (0xF,   _, 0x1, 0xE) => self.i_register += x_val as u16,
+            (0xF,   _, 0x1, 0xE) => self.i += x_val as u16,
             (0xF,   _, 0x2, 0x9) => self.set_i_to_font_addr(x_val),
             (0xF,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
             (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
@@ -97,11 +98,11 @@ impl Cpu {
         }
 
         self.stack_pointer -= 1;
-        self.program_counter = memory.get_stack_addr(self.stack_pointer) as usize;
+        self.pc = memory.get_stack_addr(self.stack_pointer) as usize;
     }
 
     fn jump(&mut self, addr: u16) {
-        self.program_counter = addr as usize;
+        self.pc = addr as usize;
     }
 
     fn call(&mut self, addr: u16, memory: &mut Memory) {
@@ -109,88 +110,88 @@ impl Cpu {
             panic!("Stack overflow");
         }
 
-        memory.set_stack_addr(self.stack_pointer, self.program_counter as u16);
+        memory.set_stack_addr(self.stack_pointer, self.pc as u16);
         self.stack_pointer += 1;
-        self.program_counter = addr as usize;
+        self.pc = addr as usize;
     }
 
     fn skip_if_eq(&mut self, x: u8, nn: u8) {
         if x == nn {
-            self.program_counter += 2;
+            self.pc += 2;
         }
     }
 
     fn skip_if_neq(&mut self, x: u8, nn: u8) {
         if x != nn {
-            self.program_counter += 2;
+            self.pc += 2;
         }
     }
 
     fn add_xy(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
+        let x_val = self.v[x as usize];
+        let y_val = self.v[y as usize];
 
         let (result, overflow) = x_val.overflowing_add(y_val);
 
-        self.registers[x as usize] = result;
-        self.registers[1] = overflow as u8;
+        self.v[x as usize] = result;
+        self.v[1] = overflow as u8;
     }
 
     fn sub_xy(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
+        let x_val = self.v[x as usize];
+        let y_val = self.v[y as usize];
         let (result, overflow) = x_val.overflowing_sub(y_val);
 
-        self.registers[x as usize] = result;
-        self.registers[0xF] = !overflow as u8;
+        self.v[x as usize] = result;
+        self.v[0xF] = !overflow as u8;
     }
 
     fn rsb_xy(&mut self, x: u8, y: u8) {
-        let x_val = self.registers[x as usize];
-        let y_val = self.registers[y as usize];
+        let x_val = self.v[x as usize];
+        let y_val = self.v[y as usize];
         let (result, overflow) = y_val.overflowing_sub(x_val);
 
-        self.registers[x as usize] = result;
-        self.registers[0xF] = !overflow as u8;
+        self.v[x as usize] = result;
+        self.v[0xF] = !overflow as u8;
     }
 
     fn shift_left(&mut self, x: u8, y: u8) {
         let val = if self.y_shift {
-            self.registers[y as usize]
+            self.v[y as usize]
         } else {
-             self.registers[x as usize]
+            self.v[x as usize]
         };
 
-        self.registers[0xF] = val >> 7;
-        self.registers[x as usize] = val << 1;
+        self.v[0xF] = val >> 7;
+        self.v[x as usize] = val << 1;
     }
 
     fn shift_right(&mut self, x: u8, y: u8) {
         let val = if self.y_shift {
-            self.registers[y as usize]
+            self.v[y as usize]
         } else {
-             self.registers[x as usize]
+            self.v[x as usize]
         };
 
-        self.registers[0xF] = val & 0b1;
-        self.registers[x as usize] = val >> 1;
+        self.v[0xF] = val & 0b1;
+        self.v[x as usize] = val >> 1;
     }
 
     fn bcd_x_to_i(&self, memory: &mut Memory, x: u8) {
-        let x_val = self.registers[x as usize];
+        let x_val = self.v[x as usize];
 
-        memory[self.i_register as usize] = (x_val/100) % 10;
-        memory[self.i_register as usize + 1] = (x_val/10) % 10;
-        memory[self.i_register as usize + 2] = x_val % 10;
+        memory[self.i as usize] = (x_val / 100) % 10;
+        memory[self.i as usize + 1] = (x_val / 10) % 10;
+        memory[self.i as usize + 2] = x_val % 10;
     }
 
     fn draw_xyn(&mut self, memory: &Memory, screen: &mut Screen, x: u8, y: u8, n: u8) {
-        self.registers[0xF] = 0;
-        let x_val = self.registers[x as usize] as usize % 64;
-        let y_val = self.registers[y as usize] as usize % 32;
+        self.v[0xF] = 0;
+        let x_val = self.v[x as usize] as usize % 64;
+        let y_val = self.v[y as usize] as usize % 32;
 
         for row in 0..n as usize {
-            let sprite = memory[row + self.i_register as usize];
+            let sprite = memory[row + self.i as usize];
 
             for col in 0..8 {
                 let screen_x = x_val + col;
@@ -207,7 +208,7 @@ impl Cpu {
                 let screen_state = screen[screen_x][screen_y];
 
                 if bit && screen_state {
-                    self.registers[0xF] = 1;
+                    self.v[0xF] = 1;
                 }
                 screen[screen_x][screen_y] = bit ^ screen_state;
             }
@@ -216,18 +217,18 @@ impl Cpu {
 
     fn store_reg_at_i(&self, memory: &mut Memory, x: u8) {
         for i in 0..=x as usize {
-            memory[self.i_register as usize + i] = self.registers[i];
+            memory[self.i as usize + i] = self.v[i];
         }
     }
 
     fn load_reg_at_i(&mut self, memory: &Memory, x: u8) {
         for i in 0..=x as usize {
-            self.registers[i] = memory[self.i_register as usize + i];
+            self.v[i] = memory[self.i as usize + i];
         }
     }
 
     fn set_i_to_font_addr(&mut self, x: u8) {
-        self.i_register = (memory::FONT_START as u16) + (x as u16) * 5;
+        self.i = (memory::FONT_START as u16) + (x as u16) * 5;
     }
 }
 
@@ -239,8 +240,8 @@ macro_rules! cpu_test {
     #[allow(unused_assignments)]
     {
         let mut cpu = Cpu {
-            registers: [0; 16],
-            program_counter: memory::PROGRAM_START,
+            v: [0; 16],
+            pc: memory::PROGRAM_START,
             ..Cpu::new(vec![])
         };
 
@@ -249,7 +250,7 @@ macro_rules! cpu_test {
 
         let mut p = 0;
         $(
-        cpu.registers[p] = $reg_in;
+        cpu.v[p] = $reg_in;
         p += 1;
         )+
 
@@ -267,13 +268,13 @@ macro_rules! cpu_test {
         p = 0;
         $(
             p += 1;
-        
+
             assert_eq!(
-                cpu.registers[p - 1], $reg_out, 
-                "v{} is not equal to 0x{:x}, it is 0x{:x}", 
-                p - 1, 
+                cpu.v[p - 1], $reg_out,
+                "v{} is not equal to 0x{:x}, it is 0x{:x}",
+                p - 1,
                 $reg_out,
-                cpu.registers[p-1],
+                cpu.v[p-1],
             );
         )+
     }};
@@ -390,7 +391,6 @@ fn test_shift() {
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x01
     ]);
-
 }
 
 #[test]
