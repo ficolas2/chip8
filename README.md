@@ -12,6 +12,7 @@ chip8emu <rom>
 ```shell
 chip8emu <output> --assemble=<input>
 ```
+See [chip-8 assembly language](docs/assembly_lang.md) for information about instructions.
 
 ## Tests
 The tests are written using macros, to make them somewhat declarative.
