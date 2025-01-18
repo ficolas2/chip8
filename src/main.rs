@@ -1,4 +1,4 @@
-use std::{env, thread, time::Duration};
+use std::{env, io::Write, thread, time::Duration};
 
 use cpu::Cpu;
 use keyboard::Keyboard;
@@ -17,6 +17,7 @@ mod timers;
 const USAGE: &str = r#"
 Usage: chip8 <rom file>
 Flags:
+    --assemble=<asm file>: create <rom file> from <asm file>
     --yshift: allows specifying a vY register for the 8xy6 and 8xyE instructions
     --clock-speed=n: allows specifying the clock speed (n) in Hz
 "#;
@@ -82,6 +83,26 @@ fn main() {
         .filter(|str| str.starts_with("-"))
         .cloned()
         .collect();
+
+    if flags.iter().any(|f| f.starts_with("--assemble=")) {
+        let asm_path = flags
+            .iter()
+            .find(|f| f.starts_with("--assemble="))
+            .unwrap()
+            .strip_prefix("--assemble=")
+            .unwrap();
+        let rom_path = args
+            .iter()
+            .find(|str| !str.starts_with("-"))
+            .expect("No ROM file specified");
+        let asm_str = std::fs::read_to_string(asm_path).expect("Failed to read ASM file");
+        let bytecode = assembler::assemble(&asm_str);
+
+        println!("Writing ROM to {}", rom_path);
+        let mut file = std::fs::File::create(rom_path).expect("Failed to create ROM file");
+        file.write_all(&bytecode).expect("Failed to write ROM file");
+        return;
+    }
 
     let rom_path = args
         .iter()
