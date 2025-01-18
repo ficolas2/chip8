@@ -1,11 +1,10 @@
-use std::{io::stdout, ops::{Index, IndexMut}};
+use std::ops::{Index, IndexMut};
 
-use termion::{input::TermRead, raw::IntoRawMode};
+use termion::input::TermRead;
 
 pub struct Keyboard {
     keys: [bool; 16],
     keys_iter: termion::input::Keys<termion::AsyncReader>,
-    _raw_mode: termion::raw::RawTerminal<std::io::Stdout>,
 }
 
 impl Keyboard {
@@ -13,7 +12,6 @@ impl Keyboard {
         Keyboard {
             keys: [false; 16],
             keys_iter: termion::async_stdin().keys(),
-            _raw_mode: stdout().into_raw_mode().unwrap(),
         }
     }
 
