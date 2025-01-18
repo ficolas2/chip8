@@ -16,7 +16,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(flags: Vec<String>) -> Cpu {
+    pub fn new(flags: &[String]) -> Cpu {
         Cpu {
             v: [0; 16],                // Registers
             pc: memory::PROGRAM_START, // Program counter
@@ -267,7 +267,7 @@ macro_rules! cpu_test {
         let mut cpu = Cpu {
             v: [0; 16],
             pc: memory::PROGRAM_START,
-            ..Cpu::new(&vec![])
+            ..Cpu::new(&[])
         };
 
         let mut memory = Memory::new();
