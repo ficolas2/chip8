@@ -11,6 +11,8 @@ pub struct Screen {
     redraw: bool,
     last_draw: std::time::Instant,
     stdout: termion::raw::RawTerminal<std::io::Stdout>,
+    size: (u16, u16),
+    full_redraw: bool,
 }
 
 impl Screen {
@@ -23,10 +25,20 @@ impl Screen {
             redraw: false,
             last_draw: std::time::Instant::now(),
             stdout,
+            size: termion::terminal_size().unwrap(),
+            full_redraw: true,
         }
     }
 
     pub fn draw(&mut self) {
+        write!(
+            self.stdout,
+            "{}{} x {}",
+            cursor::Goto(1, 33),
+            self.size.0,
+            self.size.1
+        ).unwrap();
+
         if self.last_draw.elapsed().as_millis() < 1000 / 60 {
             return;
         }
@@ -36,7 +48,7 @@ impl Screen {
         }
         for y in 0..32 {
             for x in 0..64 {
-                if self.current[x][y] != self.previous[x][y] {
+                if self.current[x][y] != self.previous[x][y] || self.full_redraw {
                     write!(
                         self.stdout,
                         "{}{}",
@@ -49,6 +61,14 @@ impl Screen {
             }
         }
         self.stdout.flush().unwrap();
+
+        if let Ok(size) = termion::terminal_size() {
+            if size != self.size {
+                self.size = size;
+                self.full_redraw = true;
+                self.redraw = true;
+            }
+        }
     }
 
     pub fn clear(&mut self) {
