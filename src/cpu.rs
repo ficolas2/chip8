@@ -89,8 +89,7 @@ impl Cpu {
             (0xF,   _, 0x0, 0x7) => self.v[x as usize] = timers.delay,
             (0xF,   _, 0x1, 0x5) => timers.delay = x_val,
             (0xF,   _, 0x1, 0x8) => timers.sound = x_val,
-            _ => {}
-            // _ => panic!("Unknown opcode: {:x}", opcode),
+            _ => panic!("Unknown opcode: {:x}", opcode),
         };
         true
     }
