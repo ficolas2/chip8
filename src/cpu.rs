@@ -3,7 +3,7 @@ use crate::assembler;
 use rand::Rng;
 
 use crate::{
-    keyboard::Keyboard, memory::{self, Memory}, screen::Screen
+    keyboard::Keyboard, memory::{self, Memory}, screen::Screen, timers::Timers
 };
 
 pub struct Cpu {
@@ -35,7 +35,7 @@ impl Cpu {
     }
 
     #[rustfmt::skip]
-    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen, keyboard: &mut Keyboard) -> bool {
+    pub fn run(&mut self, memory: &mut Memory, screen: &mut Screen, keyboard: &mut Keyboard, timers: &mut Timers) -> bool {
         let opcode = self.read_opcode(memory);
         self.pc += 2;
 
@@ -86,6 +86,9 @@ impl Cpu {
             (0xF,   _, 0x3, 0x3) => self.bcd_x_to_i(memory, x),
             (0xF,   _, 0x5, 0x5) => self.store_reg_at_i(memory, x),
             (0xF,   _, 0x6, 0x5) => self.load_reg_at_i(memory, x),
+            (0xF,   _, 0x0, 0x7) => self.v[x as usize] = timers.delay,
+            (0xF,   _, 0x1, 0x5) => timers.delay = x_val,
+            (0xF,   _, 0x1, 0x8) => timers.sound = x_val,
             _ => {}
             // _ => panic!("Unknown opcode: {:x}", opcode),
         };

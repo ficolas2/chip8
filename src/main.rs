@@ -12,6 +12,7 @@ mod fonts;
 mod keyboard;
 mod memory;
 mod screen;
+mod timers;
 
 const USAGE: &str = r#"
 Usage: chip8 <rom file>
@@ -25,6 +26,7 @@ struct Chip8 {
     memory: Memory,
     screen: Screen,
     keyboard: keyboard::Keyboard,
+    timers: timers::Timers,
     clock_speed: u64,
 }
 
@@ -35,6 +37,7 @@ impl Chip8 {
             memory: Memory::new(),
             screen: Screen::new(),
             keyboard: Keyboard::new(),
+            timers: timers::Timers::new(),
             clock_speed: 700,
         };
         if let Some(clock_speed_str) = flags.iter().find(|f| f.starts_with("--clock-speed=")) {
@@ -52,10 +55,11 @@ impl Chip8 {
         loop {
             thread::sleep(Duration::from_nanos(1_000_000_000 / self.clock_speed));
 
+            self.timers.update();
             self.keyboard.update();
             let cont = self
                 .cpu
-                .run(&mut self.memory, &mut self.screen, &mut self.keyboard);
+                .run(&mut self.memory, &mut self.screen, &mut self.keyboard, &mut self.timers);
             if !cont {
                 break;
             }
@@ -85,11 +89,6 @@ fn main() {
         .expect("No ROM file specified");
     let mut chip8 = Chip8::new(flags);
     let rom = std::fs::read(rom_path).expect("Failed to read ROM file");
-
-    // let rom = assemble(r#"
-    // skpr v0
-    // jmp 0x200
-    // "#);
 
     println!("Loading ROM {}", rom_path);
 
