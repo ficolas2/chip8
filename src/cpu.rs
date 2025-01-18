@@ -274,8 +274,9 @@ macro_rules! cpu_test {
         };
 
         let mut memory = Memory::new();
-        let mut screen = Screen::new();
+        let mut screen = Screen::new(false);
         let mut keyboard = Keyboard::new();
+        let mut timers = Timers::new();
 
         let mut p = 0;
         $(
@@ -287,7 +288,7 @@ macro_rules! cpu_test {
         memory.load_program(&code);
 
         let mut count = 0;
-        while cpu.run(&mut memory, &mut screen, &mut keyboard) {
+        while cpu.run(&mut memory, &mut screen, &mut keyboard, &mut timers) {
             count += 1;
             if count > 10000 {
                 panic!("Looped for too long for a test (10000 iterations)");

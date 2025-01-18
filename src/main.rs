@@ -35,7 +35,7 @@ impl Chip8 {
         let mut chip8 = Chip8 {
             cpu: Cpu::new(&flags),
             memory: Memory::new(),
-            screen: Screen::new(),
+            screen: Screen::new(true),
             keyboard: Keyboard::new(),
             timers: timers::Timers::new(),
             clock_speed: 700,

@@ -10,15 +10,20 @@ pub struct Screen {
     previous: [[bool; 32]; 64],
     redraw: bool,
     last_draw: std::time::Instant,
-    stdout: termion::raw::RawTerminal<std::io::Stdout>,
+    stdout: Option<termion::raw::RawTerminal<std::io::Stdout>>,
     size: (u16, u16),
     full_redraw: bool,
 }
 
 impl Screen {
-    pub fn new() -> Screen {
-        let mut stdout = stdout().into_raw_mode().unwrap();
-        write!(stdout, "{}", clear::All).unwrap();
+    pub fn new(raw: bool) -> Screen {
+        let stdout = if raw {
+            let mut stdout = stdout().into_raw_mode().unwrap();
+            write!(stdout, "{}", clear::All).unwrap();
+            Some(stdout)
+        } else {
+            None
+        };
         Screen {
             current: [[false; 32]; 64],
             previous: [[false; 32]; 64],
@@ -31,13 +36,18 @@ impl Screen {
     }
 
     pub fn draw(&mut self) {
+        if self.stdout.is_none() {
+            return;
+        }
+        let stdout = self.stdout.as_mut().unwrap();
         write!(
-            self.stdout,
+            stdout,
             "{}{} x {}",
             cursor::Goto(1, 33),
             self.size.0,
             self.size.1
-        ).unwrap();
+        )
+        .unwrap();
 
         if self.last_draw.elapsed().as_millis() < 1000 / 60 {
             return;
@@ -50,7 +60,7 @@ impl Screen {
             for x in 0..64 {
                 if self.current[x][y] != self.previous[x][y] || self.full_redraw {
                     write!(
-                        self.stdout,
+                        stdout,
                         "{}{}",
                         cursor::Goto((x * 2 + 1) as u16, (y + 1) as u16),
                         if self.current[x][y] { "██" } else { "  " }
@@ -60,7 +70,7 @@ impl Screen {
                 }
             }
         }
-        self.stdout.flush().unwrap();
+        stdout.flush().unwrap();
 
         if let Ok(size) = termion::terminal_size() {
             if size != self.size {
